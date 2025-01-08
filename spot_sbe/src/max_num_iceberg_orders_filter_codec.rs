@@ -5,8 +5,8 @@ pub use encoder::MaxNumIcebergOrdersFilterEncoder;
 
 pub const SBE_BLOCK_LENGTH: u16 = 8;
 pub const SBE_TEMPLATE_ID: u16 = 11;
-pub const SBE_SCHEMA_ID: u16 = 1;
-pub const SBE_SCHEMA_VERSION: u16 = 0;
+pub const SBE_SCHEMA_ID: u16 = 2;
+pub const SBE_SCHEMA_VERSION: u16 = 1;
 pub const SBE_SEMANTIC_VERSION: &str = "5.2";
 
 pub mod encoder {

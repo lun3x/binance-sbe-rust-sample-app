@@ -1,10 +1,10 @@
 use crate::*;
 
-pub use decoder::TrailingDeltaFilterDecoder;
-pub use encoder::TrailingDeltaFilterEncoder;
+pub use decoder::ExternalLockUpdateEventDecoder;
+pub use encoder::ExternalLockUpdateEventEncoder;
 
-pub const SBE_BLOCK_LENGTH: u16 = 32;
-pub const SBE_TEMPLATE_ID: u16 = 13;
+pub const SBE_BLOCK_LENGTH: u16 = 25;
+pub const SBE_TEMPLATE_ID: u16 = 604;
 pub const SBE_SCHEMA_ID: u16 = 2;
 pub const SBE_SCHEMA_VERSION: u16 = 1;
 pub const SBE_SEMANTIC_VERSION: &str = "5.2";
@@ -13,21 +13,21 @@ pub mod encoder {
     use super::*;
 
     #[derive(Debug, Default)]
-    pub struct TrailingDeltaFilterEncoder<'a> {
+    pub struct ExternalLockUpdateEventEncoder<'a> {
         buf: WriteBuf<'a>,
         initial_offset: usize,
         offset: usize,
         limit: usize,
     }
 
-    impl<'a> Writer<'a> for TrailingDeltaFilterEncoder<'a> {
+    impl<'a> Writer<'a> for ExternalLockUpdateEventEncoder<'a> {
         #[inline]
         fn get_buf_mut(&mut self) -> &mut WriteBuf<'a> {
             &mut self.buf
         }
     }
 
-    impl<'a> Encoder<'a> for TrailingDeltaFilterEncoder<'a> {
+    impl<'a> Encoder<'a> for ExternalLockUpdateEventEncoder<'a> {
         #[inline]
         fn get_limit(&self) -> usize {
             self.limit
@@ -39,7 +39,7 @@ pub mod encoder {
         }
     }
 
-    impl<'a> TrailingDeltaFilterEncoder<'a> {
+    impl<'a> ExternalLockUpdateEventEncoder<'a> {
         pub fn wrap(mut self, buf: WriteBuf<'a>, offset: usize) -> Self {
             let limit = offset + SBE_BLOCK_LENGTH as usize;
             self.buf = buf;
@@ -63,9 +63,7 @@ pub mod encoder {
             header
         }
 
-        // skipping CONSTANT enum 'filterType'
-
-        /// primitive field 'minTrailingAboveDelta'
+        /// primitive field 'eventTime'
         /// - min value: -9223372036854775807
         /// - max value: 9223372036854775807
         /// - null value: -9223372036854775808
@@ -74,12 +72,12 @@ pub mod encoder {
         /// - encodedOffset: 0
         /// - encodedLength: 8
         #[inline]
-        pub fn min_trailing_above_delta(&mut self, value: i64) {
+        pub fn event_time(&mut self, value: i64) {
             let offset = self.offset;
             self.get_buf_mut().put_i64_at(offset, value);
         }
 
-        /// primitive field 'maxTrailingAboveDelta'
+        /// primitive field 'clearTime'
         /// - min value: -9223372036854775807
         /// - max value: 9223372036854775807
         /// - null value: -9223372036854775808
@@ -88,37 +86,47 @@ pub mod encoder {
         /// - encodedOffset: 8
         /// - encodedLength: 8
         #[inline]
-        pub fn max_trailing_above_delta(&mut self, value: i64) {
+        pub fn clear_time(&mut self, value: i64) {
             let offset = self.offset + 8;
             self.get_buf_mut().put_i64_at(offset, value);
         }
 
-        /// primitive field 'minTrailingBelowDelta'
-        /// - min value: -9223372036854775807
-        /// - max value: 9223372036854775807
-        /// - null value: -9223372036854775808
+        /// primitive field 'qtyExponent'
+        /// - min value: -127
+        /// - max value: 127
+        /// - null value: -128
         /// - characterEncoding: null
         /// - semanticType: null
         /// - encodedOffset: 16
-        /// - encodedLength: 8
+        /// - encodedLength: 1
         #[inline]
-        pub fn min_trailing_below_delta(&mut self, value: i64) {
+        pub fn qty_exponent(&mut self, value: i8) {
             let offset = self.offset + 16;
-            self.get_buf_mut().put_i64_at(offset, value);
+            self.get_buf_mut().put_i8_at(offset, value);
         }
 
-        /// primitive field 'maxTrailingBelowDelta'
+        /// primitive field 'lockedQtyDelta'
         /// - min value: -9223372036854775807
         /// - max value: 9223372036854775807
         /// - null value: -9223372036854775808
         /// - characterEncoding: null
         /// - semanticType: null
-        /// - encodedOffset: 24
+        /// - encodedOffset: 17
         /// - encodedLength: 8
         #[inline]
-        pub fn max_trailing_below_delta(&mut self, value: i64) {
-            let offset = self.offset + 24;
+        pub fn locked_qty_delta(&mut self, value: i64) {
+            let offset = self.offset + 17;
             self.get_buf_mut().put_i64_at(offset, value);
+        }
+
+        /// VAR_DATA ENCODER - character encoding: 'UTF-8'
+        #[inline]
+        pub fn asset(&mut self, value: &str) {
+            let limit = self.get_limit();
+            let data_length = value.len();
+            self.set_limit(limit + 1 + data_length);
+            self.get_buf_mut().put_u8_at(limit, data_length as u8);
+            self.get_buf_mut().put_slice_at(limit + 1, value.as_bytes());
         }
     }
 } // end encoder
@@ -127,7 +135,7 @@ pub mod decoder {
     use super::*;
 
     #[derive(Clone, Copy, Debug, Default)]
-    pub struct TrailingDeltaFilterDecoder<'a> {
+    pub struct ExternalLockUpdateEventDecoder<'a> {
         buf: ReadBuf<'a>,
         initial_offset: usize,
         offset: usize,
@@ -136,14 +144,14 @@ pub mod decoder {
         pub acting_version: u16,
     }
 
-    impl<'a> Reader<'a> for TrailingDeltaFilterDecoder<'a> {
+    impl<'a> Reader<'a> for ExternalLockUpdateEventDecoder<'a> {
         #[inline]
         fn get_buf(&self) -> &ReadBuf<'a> {
             &self.buf
         }
     }
 
-    impl<'a> Decoder<'a> for TrailingDeltaFilterDecoder<'a> {
+    impl<'a> Decoder<'a> for ExternalLockUpdateEventDecoder<'a> {
         #[inline]
         fn get_limit(&self) -> usize {
             self.limit
@@ -155,7 +163,7 @@ pub mod decoder {
         }
     }
 
-    impl<'a> TrailingDeltaFilterDecoder<'a> {
+    impl<'a> ExternalLockUpdateEventDecoder<'a> {
         pub fn wrap(
             mut self,
             buf: ReadBuf<'a>,
@@ -191,34 +199,43 @@ pub mod decoder {
             )
         }
 
-        /// CONSTANT enum
-        #[inline]
-        pub fn filter_type(&self) -> FilterType {
-            FilterType::TrailingDelta
-        }
-
         /// primitive field - 'REQUIRED'
         #[inline]
-        pub fn min_trailing_above_delta(&self) -> i64 {
+        pub fn event_time(&self) -> i64 {
             self.get_buf().get_i64_at(self.offset)
         }
 
         /// primitive field - 'REQUIRED'
         #[inline]
-        pub fn max_trailing_above_delta(&self) -> i64 {
+        pub fn clear_time(&self) -> i64 {
             self.get_buf().get_i64_at(self.offset + 8)
         }
 
         /// primitive field - 'REQUIRED'
         #[inline]
-        pub fn min_trailing_below_delta(&self) -> i64 {
-            self.get_buf().get_i64_at(self.offset + 16)
+        pub fn qty_exponent(&self) -> i8 {
+            self.get_buf().get_i8_at(self.offset + 16)
         }
 
         /// primitive field - 'REQUIRED'
         #[inline]
-        pub fn max_trailing_below_delta(&self) -> i64 {
-            self.get_buf().get_i64_at(self.offset + 24)
+        pub fn locked_qty_delta(&self) -> i64 {
+            self.get_buf().get_i64_at(self.offset + 17)
+        }
+
+        /// VAR_DATA DECODER - character encoding: 'UTF-8'
+        #[inline]
+        pub fn asset_decoder(&mut self) -> (usize, usize) {
+            let offset = self.get_limit();
+            let data_length = self.get_buf().get_u8_at(offset) as usize;
+            self.set_limit(offset + 1 + data_length);
+            (offset + 1, data_length)
+        }
+
+        #[inline]
+        pub fn asset_slice(&'a self, coordinates: (usize, usize)) -> &'a [u8] {
+            debug_assert!(self.get_limit() >= coordinates.0 + coordinates.1);
+            self.get_buf().get_slice_at(coordinates.0, coordinates.1)
         }
     }
 } // end decoder

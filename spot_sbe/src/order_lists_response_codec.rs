@@ -5,8 +5,8 @@ pub use encoder::OrderListsResponseEncoder;
 
 pub const SBE_BLOCK_LENGTH: u16 = 0;
 pub const SBE_TEMPLATE_ID: u16 = 314;
-pub const SBE_SCHEMA_ID: u16 = 1;
-pub const SBE_SCHEMA_VERSION: u16 = 0;
+pub const SBE_SCHEMA_ID: u16 = 2;
+pub const SBE_SCHEMA_VERSION: u16 = 1;
 pub const SBE_SEMANTIC_VERSION: &str = "5.2";
 
 pub mod encoder {
@@ -495,7 +495,7 @@ pub mod decoder {
             self
         }
 
-        /// group token - Token{signal=BEGIN_GROUP, name='orderLists', referencedName='null', description='null', packageName='null', id=100, version=0, deprecated=0, encodedLength=19, offset=0, componentTokenCount=65, encoding=Encoding{presence=REQUIRED, primitiveType=null, byteOrder=LITTLE_ENDIAN, minValue=null, maxValue=null, nullValue=null, constValue=null, characterEncoding='null', epoch='null', timeUnit=null, semanticType='null'}}
+        /// group token - Token{signal=BEGIN_GROUP, name='orderLists', referencedName='null', description='null', packageName='null', id=100, version=0, deprecated=0, encodedLength=19, offset=0, componentTokenCount=66, encoding=Encoding{presence=REQUIRED, primitiveType=null, byteOrder=LITTLE_ENDIAN, minValue=null, maxValue=null, nullValue=null, constValue=null, characterEncoding='null', epoch='null', timeUnit=null, semanticType='null'}}
         #[inline]
         pub fn parent(&mut self) -> SbeResult<P> {
             self.parent.take().ok_or(SbeErr::ParentNotSet)

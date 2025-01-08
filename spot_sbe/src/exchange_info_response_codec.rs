@@ -5,8 +5,8 @@ pub use encoder::ExchangeInfoResponseEncoder;
 
 pub const SBE_BLOCK_LENGTH: u16 = 0;
 pub const SBE_TEMPLATE_ID: u16 = 103;
-pub const SBE_SCHEMA_ID: u16 = 1;
-pub const SBE_SCHEMA_VERSION: u16 = 0;
+pub const SBE_SCHEMA_ID: u16 = 2;
+pub const SBE_SCHEMA_VERSION: u16 = 1;
 pub const SBE_SEMANTIC_VERSION: &str = "5.2";
 
 pub mod encoder {
@@ -397,7 +397,7 @@ pub mod encoder {
 
         #[inline]
         pub fn block_length() -> u16 {
-            16
+            17
         }
 
         #[inline]
@@ -507,43 +507,50 @@ pub mod encoder {
 
         /// REQUIRED enum
         #[inline]
-        pub fn quote_order_qty_market_allowed(&mut self, value: BoolEnum) {
+        pub fn oto_allowed(&mut self, value: BoolEnum) {
             let offset = self.offset + 9;
             self.get_buf_mut().put_u8_at(offset, value as u8)
         }
 
         /// REQUIRED enum
         #[inline]
-        pub fn allow_trailing_stop(&mut self, value: BoolEnum) {
+        pub fn quote_order_qty_market_allowed(&mut self, value: BoolEnum) {
             let offset = self.offset + 10;
             self.get_buf_mut().put_u8_at(offset, value as u8)
         }
 
         /// REQUIRED enum
         #[inline]
-        pub fn cancel_replace_allowed(&mut self, value: BoolEnum) {
+        pub fn allow_trailing_stop(&mut self, value: BoolEnum) {
             let offset = self.offset + 11;
             self.get_buf_mut().put_u8_at(offset, value as u8)
         }
 
         /// REQUIRED enum
         #[inline]
-        pub fn is_spot_trading_allowed(&mut self, value: BoolEnum) {
+        pub fn cancel_replace_allowed(&mut self, value: BoolEnum) {
             let offset = self.offset + 12;
             self.get_buf_mut().put_u8_at(offset, value as u8)
         }
 
         /// REQUIRED enum
         #[inline]
-        pub fn is_margin_trading_allowed(&mut self, value: BoolEnum) {
+        pub fn is_spot_trading_allowed(&mut self, value: BoolEnum) {
             let offset = self.offset + 13;
             self.get_buf_mut().put_u8_at(offset, value as u8)
         }
 
         /// REQUIRED enum
         #[inline]
-        pub fn default_self_trade_prevention_mode(&mut self, value: SelfTradePreventionMode) {
+        pub fn is_margin_trading_allowed(&mut self, value: BoolEnum) {
             let offset = self.offset + 14;
+            self.get_buf_mut().put_u8_at(offset, value as u8)
+        }
+
+        /// REQUIRED enum
+        #[inline]
+        pub fn default_self_trade_prevention_mode(&mut self, value: SelfTradePreventionMode) {
+            let offset = self.offset + 15;
             self.get_buf_mut().put_u8_at(offset, value as u8)
         }
 
@@ -552,7 +559,7 @@ pub mod encoder {
             &mut self,
             value: AllowedSelfTradePreventionModes,
         ) {
-            let offset = self.offset + 15;
+            let offset = self.offset + 16;
             self.get_buf_mut().put_u8_at(offset, value.0)
         }
 
@@ -568,12 +575,12 @@ pub mod encoder {
 
         /// GROUP ENCODER (id=101)
         #[inline]
-        pub fn permissions_encoder(
+        pub fn permission_sets_encoder(
             self,
             count: u32,
-            permissions_encoder: PermissionsEncoder<Self>,
-        ) -> PermissionsEncoder<Self> {
-            permissions_encoder.wrap(self, count)
+            permission_sets_encoder: PermissionSetsEncoder<Self>,
+        ) -> PermissionSetsEncoder<Self> {
+            permission_sets_encoder.wrap(self, count)
         }
 
         /// VAR_DATA ENCODER - character encoding: 'UTF-8'
@@ -703,6 +710,105 @@ pub mod encoder {
             self.set_limit(limit + 1 + data_length);
             self.get_buf_mut().put_u8_at(limit, data_length as u8);
             self.get_buf_mut().put_slice_at(limit + 1, value);
+        }
+    }
+
+    #[derive(Debug, Default)]
+    pub struct PermissionSetsEncoder<P> {
+        parent: Option<P>,
+        count: u32,
+        index: usize,
+        offset: usize,
+        initial_limit: usize,
+    }
+
+    impl<'a, P> Writer<'a> for PermissionSetsEncoder<P>
+    where
+        P: Writer<'a> + Default,
+    {
+        #[inline]
+        fn get_buf_mut(&mut self) -> &mut WriteBuf<'a> {
+            if let Some(parent) = self.parent.as_mut() {
+                parent.get_buf_mut()
+            } else {
+                panic!("parent was None")
+            }
+        }
+    }
+
+    impl<'a, P> Encoder<'a> for PermissionSetsEncoder<P>
+    where
+        P: Encoder<'a> + Default,
+    {
+        #[inline]
+        fn get_limit(&self) -> usize {
+            self.parent.as_ref().expect("parent missing").get_limit()
+        }
+
+        #[inline]
+        fn set_limit(&mut self, limit: usize) {
+            self.parent
+                .as_mut()
+                .expect("parent missing")
+                .set_limit(limit);
+        }
+    }
+
+    impl<'a, P> PermissionSetsEncoder<P>
+    where
+        P: Encoder<'a> + Default,
+    {
+        #[inline]
+        pub fn wrap(mut self, mut parent: P, count: u32) -> Self {
+            let initial_limit = parent.get_limit();
+            parent.set_limit(initial_limit + 6);
+            parent
+                .get_buf_mut()
+                .put_u16_at(initial_limit, Self::block_length());
+            parent.get_buf_mut().put_u32_at(initial_limit + 2, count);
+            self.parent = Some(parent);
+            self.count = count;
+            self.index = usize::MAX;
+            self.offset = usize::MAX;
+            self.initial_limit = initial_limit;
+            self
+        }
+
+        #[inline]
+        pub fn block_length() -> u16 {
+            0
+        }
+
+        #[inline]
+        pub fn parent(&mut self) -> SbeResult<P> {
+            self.parent.take().ok_or(SbeErr::ParentNotSet)
+        }
+
+        /// will return Some(current index) when successful otherwise None
+        #[inline]
+        pub fn advance(&mut self) -> SbeResult<Option<usize>> {
+            let index = self.index.wrapping_add(1);
+            if index >= self.count as usize {
+                return Ok(None);
+            }
+            if let Some(parent) = self.parent.as_mut() {
+                self.offset = parent.get_limit();
+                parent.set_limit(self.offset + Self::block_length() as usize);
+                self.index = index;
+                Ok(Some(index))
+            } else {
+                Err(SbeErr::ParentNotSet)
+            }
+        }
+
+        /// GROUP ENCODER (id=100)
+        #[inline]
+        pub fn permissions_encoder(
+            self,
+            count: u32,
+            permissions_encoder: PermissionsEncoder<Self>,
+        ) -> PermissionsEncoder<Self> {
+            permissions_encoder.wrap(self, count)
         }
     }
 
@@ -1367,7 +1473,7 @@ pub mod decoder {
             self
         }
 
-        /// group token - Token{signal=BEGIN_GROUP, name='symbols', referencedName='null', description='null', packageName='null', id=102, version=0, deprecated=0, encodedLength=16, offset=-1, componentTokenCount=140, encoding=Encoding{presence=REQUIRED, primitiveType=null, byteOrder=LITTLE_ENDIAN, minValue=null, maxValue=null, nullValue=null, constValue=null, characterEncoding='null', epoch='null', timeUnit=null, semanticType='null'}}
+        /// group token - Token{signal=BEGIN_GROUP, name='symbols', referencedName='null', description='null', packageName='null', id=102, version=0, deprecated=0, encodedLength=17, offset=-1, componentTokenCount=152, encoding=Encoding{presence=REQUIRED, primitiveType=null, byteOrder=LITTLE_ENDIAN, minValue=null, maxValue=null, nullValue=null, constValue=null, characterEncoding='null', epoch='null', timeUnit=null, semanticType='null'}}
         #[inline]
         pub fn parent(&mut self) -> SbeResult<P> {
             self.parent.take().ok_or(SbeErr::ParentNotSet)
@@ -1443,43 +1549,49 @@ pub mod decoder {
 
         /// REQUIRED enum
         #[inline]
-        pub fn quote_order_qty_market_allowed(&self) -> BoolEnum {
+        pub fn oto_allowed(&self) -> BoolEnum {
             self.get_buf().get_u8_at(self.offset + 9).into()
         }
 
         /// REQUIRED enum
         #[inline]
-        pub fn allow_trailing_stop(&self) -> BoolEnum {
+        pub fn quote_order_qty_market_allowed(&self) -> BoolEnum {
             self.get_buf().get_u8_at(self.offset + 10).into()
         }
 
         /// REQUIRED enum
         #[inline]
-        pub fn cancel_replace_allowed(&self) -> BoolEnum {
+        pub fn allow_trailing_stop(&self) -> BoolEnum {
             self.get_buf().get_u8_at(self.offset + 11).into()
         }
 
         /// REQUIRED enum
         #[inline]
-        pub fn is_spot_trading_allowed(&self) -> BoolEnum {
+        pub fn cancel_replace_allowed(&self) -> BoolEnum {
             self.get_buf().get_u8_at(self.offset + 12).into()
         }
 
         /// REQUIRED enum
         #[inline]
-        pub fn is_margin_trading_allowed(&self) -> BoolEnum {
+        pub fn is_spot_trading_allowed(&self) -> BoolEnum {
             self.get_buf().get_u8_at(self.offset + 13).into()
         }
 
         /// REQUIRED enum
         #[inline]
-        pub fn default_self_trade_prevention_mode(&self) -> SelfTradePreventionMode {
+        pub fn is_margin_trading_allowed(&self) -> BoolEnum {
             self.get_buf().get_u8_at(self.offset + 14).into()
+        }
+
+        /// REQUIRED enum
+        #[inline]
+        pub fn default_self_trade_prevention_mode(&self) -> SelfTradePreventionMode {
+            self.get_buf().get_u8_at(self.offset + 15).into()
         }
 
         #[inline]
         pub fn allowed_self_trade_prevention_modes(&self) -> AllowedSelfTradePreventionModes {
-            AllowedSelfTradePreventionModes::new(self.get_buf().get_u8_at(self.offset + 15))
+            AllowedSelfTradePreventionModes::new(self.get_buf().get_u8_at(self.offset + 16))
         }
 
         /// GROUP DECODER (id=100)
@@ -1490,8 +1602,8 @@ pub mod decoder {
 
         /// GROUP DECODER (id=101)
         #[inline]
-        pub fn permissions_decoder(self) -> PermissionsDecoder<Self> {
-            PermissionsDecoder::default().wrap(self)
+        pub fn permission_sets_decoder(self) -> PermissionSetsDecoder<Self> {
+            PermissionSetsDecoder::default().wrap(self)
         }
 
         /// VAR_DATA DECODER - character encoding: 'UTF-8'
@@ -1603,7 +1715,7 @@ pub mod decoder {
             self
         }
 
-        /// group token - Token{signal=BEGIN_GROUP, name='filters', referencedName='null', description='null', packageName='null', id=100, version=0, deprecated=0, encodedLength=0, offset=16, componentTokenCount=12, encoding=Encoding{presence=REQUIRED, primitiveType=null, byteOrder=LITTLE_ENDIAN, minValue=null, maxValue=null, nullValue=null, constValue=null, characterEncoding='null', epoch='null', timeUnit=null, semanticType='null'}}
+        /// group token - Token{signal=BEGIN_GROUP, name='filters', referencedName='null', description='null', packageName='null', id=100, version=0, deprecated=0, encodedLength=0, offset=17, componentTokenCount=12, encoding=Encoding{presence=REQUIRED, primitiveType=null, byteOrder=LITTLE_ENDIAN, minValue=null, maxValue=null, nullValue=null, constValue=null, characterEncoding='null', epoch='null', timeUnit=null, semanticType='null'}}
         #[inline]
         pub fn parent(&mut self) -> SbeResult<P> {
             self.parent.take().ok_or(SbeErr::ParentNotSet)
@@ -1646,6 +1758,94 @@ pub mod decoder {
         pub fn filter_slice(&'a self, coordinates: (usize, usize)) -> &'a [u8] {
             debug_assert!(self.get_limit() >= coordinates.0 + coordinates.1);
             self.get_buf().get_slice_at(coordinates.0, coordinates.1)
+        }
+    }
+
+    #[derive(Debug, Default)]
+    pub struct PermissionSetsDecoder<P> {
+        parent: Option<P>,
+        block_length: usize,
+        count: u32,
+        index: usize,
+        offset: usize,
+    }
+
+    impl<'a, P> Reader<'a> for PermissionSetsDecoder<P>
+    where
+        P: Reader<'a> + Default,
+    {
+        #[inline]
+        fn get_buf(&self) -> &ReadBuf<'a> {
+            self.parent.as_ref().expect("parent missing").get_buf()
+        }
+    }
+
+    impl<'a, P> Decoder<'a> for PermissionSetsDecoder<P>
+    where
+        P: Decoder<'a> + Default,
+    {
+        #[inline]
+        fn get_limit(&self) -> usize {
+            self.parent.as_ref().expect("parent missing").get_limit()
+        }
+
+        #[inline]
+        fn set_limit(&mut self, limit: usize) {
+            self.parent
+                .as_mut()
+                .expect("parent missing")
+                .set_limit(limit);
+        }
+    }
+
+    impl<'a, P> PermissionSetsDecoder<P>
+    where
+        P: Decoder<'a> + Default,
+    {
+        pub fn wrap(mut self, mut parent: P) -> Self {
+            let initial_offset = parent.get_limit();
+            let block_length = parent.get_buf().get_u16_at(initial_offset) as usize;
+            let count = parent.get_buf().get_u32_at(initial_offset + 2);
+            parent.set_limit(initial_offset + 6);
+            self.parent = Some(parent);
+            self.block_length = block_length;
+            self.count = count;
+            self.index = usize::MAX;
+            self.offset = 0;
+            self
+        }
+
+        /// group token - Token{signal=BEGIN_GROUP, name='permissionSets', referencedName='null', description='null', packageName='null', id=101, version=0, deprecated=0, encodedLength=0, offset=-1, componentTokenCount=18, encoding=Encoding{presence=REQUIRED, primitiveType=null, byteOrder=LITTLE_ENDIAN, minValue=null, maxValue=null, nullValue=null, constValue=null, characterEncoding='null', epoch='null', timeUnit=null, semanticType='null'}}
+        #[inline]
+        pub fn parent(&mut self) -> SbeResult<P> {
+            self.parent.take().ok_or(SbeErr::ParentNotSet)
+        }
+
+        #[inline]
+        pub fn count(&self) -> u32 {
+            self.count
+        }
+
+        /// will return Some(current index) when successful otherwise None
+        pub fn advance(&mut self) -> SbeResult<Option<usize>> {
+            let index = self.index.wrapping_add(1);
+            if index >= self.count as usize {
+                return Ok(None);
+            }
+            if let Some(parent) = self.parent.as_mut() {
+                self.offset = parent.get_limit();
+                parent.set_limit(self.offset + self.block_length);
+                self.index = index;
+                Ok(Some(index))
+            } else {
+                Err(SbeErr::ParentNotSet)
+            }
+        }
+
+        /// GROUP DECODER (id=100)
+        #[inline]
+        pub fn permissions_decoder(self) -> PermissionsDecoder<Self> {
+            PermissionsDecoder::default().wrap(self)
         }
     }
 
@@ -1703,7 +1903,7 @@ pub mod decoder {
             self
         }
 
-        /// group token - Token{signal=BEGIN_GROUP, name='permissions', referencedName='null', description='null', packageName='null', id=101, version=0, deprecated=0, encodedLength=0, offset=-1, componentTokenCount=12, encoding=Encoding{presence=REQUIRED, primitiveType=null, byteOrder=LITTLE_ENDIAN, minValue=null, maxValue=null, nullValue=null, constValue=null, characterEncoding='null', epoch='null', timeUnit=null, semanticType='null'}}
+        /// group token - Token{signal=BEGIN_GROUP, name='permissions', referencedName='null', description='null', packageName='null', id=100, version=0, deprecated=0, encodedLength=0, offset=0, componentTokenCount=12, encoding=Encoding{presence=REQUIRED, primitiveType=null, byteOrder=LITTLE_ENDIAN, minValue=null, maxValue=null, nullValue=null, constValue=null, characterEncoding='null', epoch='null', timeUnit=null, semanticType='null'}}
         #[inline]
         pub fn parent(&mut self) -> SbeResult<P> {
             self.parent.take().ok_or(SbeErr::ParentNotSet)

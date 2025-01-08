@@ -1,10 +1,10 @@
 use crate::*;
 
-pub use decoder::TrailingDeltaFilterDecoder;
-pub use encoder::TrailingDeltaFilterEncoder;
+pub use decoder::EventStreamTerminatedEventDecoder;
+pub use encoder::EventStreamTerminatedEventEncoder;
 
-pub const SBE_BLOCK_LENGTH: u16 = 32;
-pub const SBE_TEMPLATE_ID: u16 = 13;
+pub const SBE_BLOCK_LENGTH: u16 = 8;
+pub const SBE_TEMPLATE_ID: u16 = 602;
 pub const SBE_SCHEMA_ID: u16 = 2;
 pub const SBE_SCHEMA_VERSION: u16 = 1;
 pub const SBE_SEMANTIC_VERSION: &str = "5.2";
@@ -13,21 +13,21 @@ pub mod encoder {
     use super::*;
 
     #[derive(Debug, Default)]
-    pub struct TrailingDeltaFilterEncoder<'a> {
+    pub struct EventStreamTerminatedEventEncoder<'a> {
         buf: WriteBuf<'a>,
         initial_offset: usize,
         offset: usize,
         limit: usize,
     }
 
-    impl<'a> Writer<'a> for TrailingDeltaFilterEncoder<'a> {
+    impl<'a> Writer<'a> for EventStreamTerminatedEventEncoder<'a> {
         #[inline]
         fn get_buf_mut(&mut self) -> &mut WriteBuf<'a> {
             &mut self.buf
         }
     }
 
-    impl<'a> Encoder<'a> for TrailingDeltaFilterEncoder<'a> {
+    impl<'a> Encoder<'a> for EventStreamTerminatedEventEncoder<'a> {
         #[inline]
         fn get_limit(&self) -> usize {
             self.limit
@@ -39,7 +39,7 @@ pub mod encoder {
         }
     }
 
-    impl<'a> TrailingDeltaFilterEncoder<'a> {
+    impl<'a> EventStreamTerminatedEventEncoder<'a> {
         pub fn wrap(mut self, buf: WriteBuf<'a>, offset: usize) -> Self {
             let limit = offset + SBE_BLOCK_LENGTH as usize;
             self.buf = buf;
@@ -63,9 +63,7 @@ pub mod encoder {
             header
         }
 
-        // skipping CONSTANT enum 'filterType'
-
-        /// primitive field 'minTrailingAboveDelta'
+        /// primitive field 'eventTime'
         /// - min value: -9223372036854775807
         /// - max value: 9223372036854775807
         /// - null value: -9223372036854775808
@@ -74,50 +72,8 @@ pub mod encoder {
         /// - encodedOffset: 0
         /// - encodedLength: 8
         #[inline]
-        pub fn min_trailing_above_delta(&mut self, value: i64) {
+        pub fn event_time(&mut self, value: i64) {
             let offset = self.offset;
-            self.get_buf_mut().put_i64_at(offset, value);
-        }
-
-        /// primitive field 'maxTrailingAboveDelta'
-        /// - min value: -9223372036854775807
-        /// - max value: 9223372036854775807
-        /// - null value: -9223372036854775808
-        /// - characterEncoding: null
-        /// - semanticType: null
-        /// - encodedOffset: 8
-        /// - encodedLength: 8
-        #[inline]
-        pub fn max_trailing_above_delta(&mut self, value: i64) {
-            let offset = self.offset + 8;
-            self.get_buf_mut().put_i64_at(offset, value);
-        }
-
-        /// primitive field 'minTrailingBelowDelta'
-        /// - min value: -9223372036854775807
-        /// - max value: 9223372036854775807
-        /// - null value: -9223372036854775808
-        /// - characterEncoding: null
-        /// - semanticType: null
-        /// - encodedOffset: 16
-        /// - encodedLength: 8
-        #[inline]
-        pub fn min_trailing_below_delta(&mut self, value: i64) {
-            let offset = self.offset + 16;
-            self.get_buf_mut().put_i64_at(offset, value);
-        }
-
-        /// primitive field 'maxTrailingBelowDelta'
-        /// - min value: -9223372036854775807
-        /// - max value: 9223372036854775807
-        /// - null value: -9223372036854775808
-        /// - characterEncoding: null
-        /// - semanticType: null
-        /// - encodedOffset: 24
-        /// - encodedLength: 8
-        #[inline]
-        pub fn max_trailing_below_delta(&mut self, value: i64) {
-            let offset = self.offset + 24;
             self.get_buf_mut().put_i64_at(offset, value);
         }
     }
@@ -127,7 +83,7 @@ pub mod decoder {
     use super::*;
 
     #[derive(Clone, Copy, Debug, Default)]
-    pub struct TrailingDeltaFilterDecoder<'a> {
+    pub struct EventStreamTerminatedEventDecoder<'a> {
         buf: ReadBuf<'a>,
         initial_offset: usize,
         offset: usize,
@@ -136,14 +92,14 @@ pub mod decoder {
         pub acting_version: u16,
     }
 
-    impl<'a> Reader<'a> for TrailingDeltaFilterDecoder<'a> {
+    impl<'a> Reader<'a> for EventStreamTerminatedEventDecoder<'a> {
         #[inline]
         fn get_buf(&self) -> &ReadBuf<'a> {
             &self.buf
         }
     }
 
-    impl<'a> Decoder<'a> for TrailingDeltaFilterDecoder<'a> {
+    impl<'a> Decoder<'a> for EventStreamTerminatedEventDecoder<'a> {
         #[inline]
         fn get_limit(&self) -> usize {
             self.limit
@@ -155,7 +111,7 @@ pub mod decoder {
         }
     }
 
-    impl<'a> TrailingDeltaFilterDecoder<'a> {
+    impl<'a> EventStreamTerminatedEventDecoder<'a> {
         pub fn wrap(
             mut self,
             buf: ReadBuf<'a>,
@@ -191,34 +147,10 @@ pub mod decoder {
             )
         }
 
-        /// CONSTANT enum
-        #[inline]
-        pub fn filter_type(&self) -> FilterType {
-            FilterType::TrailingDelta
-        }
-
         /// primitive field - 'REQUIRED'
         #[inline]
-        pub fn min_trailing_above_delta(&self) -> i64 {
+        pub fn event_time(&self) -> i64 {
             self.get_buf().get_i64_at(self.offset)
-        }
-
-        /// primitive field - 'REQUIRED'
-        #[inline]
-        pub fn max_trailing_above_delta(&self) -> i64 {
-            self.get_buf().get_i64_at(self.offset + 8)
-        }
-
-        /// primitive field - 'REQUIRED'
-        #[inline]
-        pub fn min_trailing_below_delta(&self) -> i64 {
-            self.get_buf().get_i64_at(self.offset + 16)
-        }
-
-        /// primitive field - 'REQUIRED'
-        #[inline]
-        pub fn max_trailing_below_delta(&self) -> i64 {
-            self.get_buf().get_i64_at(self.offset + 24)
         }
     }
 } // end decoder

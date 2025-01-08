@@ -5,8 +5,8 @@ pub use encoder::UserDataStreamPingResponseEncoder;
 
 pub const SBE_BLOCK_LENGTH: u16 = 0;
 pub const SBE_TEMPLATE_ID: u16 = 501;
-pub const SBE_SCHEMA_ID: u16 = 1;
-pub const SBE_SCHEMA_VERSION: u16 = 0;
+pub const SBE_SCHEMA_ID: u16 = 2;
+pub const SBE_SCHEMA_VERSION: u16 = 1;
 pub const SBE_SEMANTIC_VERSION: &str = "5.2";
 
 pub mod encoder {

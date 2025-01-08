@@ -3,10 +3,10 @@ use crate::*;
 pub use decoder::NewOrderResultResponseDecoder;
 pub use encoder::NewOrderResultResponseEncoder;
 
-pub const SBE_BLOCK_LENGTH: u16 = 134;
+pub const SBE_BLOCK_LENGTH: u16 = 142;
 pub const SBE_TEMPLATE_ID: u16 = 301;
-pub const SBE_SCHEMA_ID: u16 = 1;
-pub const SBE_SCHEMA_VERSION: u16 = 0;
+pub const SBE_SCHEMA_ID: u16 = 2;
+pub const SBE_SCHEMA_VERSION: u16 = 1;
 pub const SBE_SEMANTIC_VERSION: &str = "5.2";
 
 pub mod encoder {
@@ -371,6 +371,20 @@ pub mod encoder {
             self.get_buf_mut().put_u8_at(offset, value as u8)
         }
 
+        /// primitive field 'origQuoteOrderQty'
+        /// - min value: -9223372036854775807
+        /// - max value: 9223372036854775807
+        /// - null value: -9223372036854775808
+        /// - characterEncoding: null
+        /// - semanticType: null
+        /// - encodedOffset: 134
+        /// - encodedLength: 8
+        #[inline]
+        pub fn orig_quote_order_qty(&mut self, value: i64) {
+            let offset = self.offset + 134;
+            self.get_buf_mut().put_i64_at(offset, value);
+        }
+
         /// VAR_DATA ENCODER - character encoding: 'UTF-8'
         #[inline]
         pub fn symbol(&mut self, value: &str) {
@@ -665,6 +679,16 @@ pub mod decoder {
         #[inline]
         pub fn used_sor(&self) -> BoolEnum {
             self.get_buf().get_u8_at(self.offset + 133).into()
+        }
+
+        /// primitive field - 'REQUIRED'
+        #[inline]
+        pub fn orig_quote_order_qty(&self) -> i64 {
+            if self.acting_version > 0 && self.acting_version < 1 {
+                return -9223372036854775808_i64;
+            }
+
+            self.get_buf().get_i64_at(self.offset + 134)
         }
 
         /// VAR_DATA DECODER - character encoding: 'UTF-8'

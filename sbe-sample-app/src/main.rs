@@ -352,7 +352,9 @@ fn main() -> anyhow::Result<()> {
                 filters
             },
             permissions: {
-                let mut permissions_decoder = decoder.permissions_decoder();
+                let permission_sets_decoder = decoder.permission_sets_decoder();
+
+                let mut permissions_decoder = permission_sets_decoder.permissions_decoder();
                 let count = permissions_decoder.count().try_into()?;
                 let mut permissions = Vec::with_capacity(count);
                 for _ in 0..count {
@@ -361,7 +363,9 @@ fn main() -> anyhow::Result<()> {
                     let slice = permissions_decoder.permission_slice(coordinates);
                     permissions.push(String::from_utf8(slice.into())?);
                 }
-                decoder = permissions_decoder.parent()?;
+
+                let mut permission_sets_decoder = permissions_decoder.parent()?;
+                decoder = permission_sets_decoder.parent()?;
                 permissions
             },
             symbol: {

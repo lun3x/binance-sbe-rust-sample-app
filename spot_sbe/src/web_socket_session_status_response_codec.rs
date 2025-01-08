@@ -3,10 +3,10 @@ use crate::*;
 pub use decoder::WebSocketSessionStatusResponseDecoder;
 pub use encoder::WebSocketSessionStatusResponseEncoder;
 
-pub const SBE_BLOCK_LENGTH: u16 = 25;
+pub const SBE_BLOCK_LENGTH: u16 = 26;
 pub const SBE_TEMPLATE_ID: u16 = 52;
-pub const SBE_SCHEMA_ID: u16 = 1;
-pub const SBE_SCHEMA_VERSION: u16 = 0;
+pub const SBE_SCHEMA_ID: u16 = 2;
+pub const SBE_SCHEMA_VERSION: u16 = 1;
 pub const SBE_SEMANTIC_VERSION: &str = "5.2";
 
 pub mod encoder {
@@ -110,6 +110,13 @@ pub mod encoder {
         pub fn server_time(&mut self, value: i64) {
             let offset = self.offset + 17;
             self.get_buf_mut().put_i64_at(offset, value);
+        }
+
+        /// REQUIRED enum
+        #[inline]
+        pub fn user_data_stream(&mut self, value: BoolEnum) {
+            let offset = self.offset + 25;
+            self.get_buf_mut().put_u8_at(offset, value as u8)
         }
 
         /// VAR_DATA ENCODER - character encoding: 'UTF-8'
@@ -219,6 +226,16 @@ pub mod decoder {
         #[inline]
         pub fn server_time(&self) -> i64 {
             self.get_buf().get_i64_at(self.offset + 17)
+        }
+
+        /// REQUIRED enum
+        #[inline]
+        pub fn user_data_stream(&self) -> BoolEnum {
+            if self.acting_version < 1 {
+                return BoolEnum::default();
+            }
+
+            self.get_buf().get_u8_at(self.offset + 25).into()
         }
 
         /// VAR_DATA DECODER - character encoding: 'UTF-8'

@@ -3,10 +3,10 @@ use crate::*;
 pub use decoder::NewOrderFullResponseDecoder;
 pub use encoder::NewOrderFullResponseEncoder;
 
-pub const SBE_BLOCK_LENGTH: u16 = 134;
+pub const SBE_BLOCK_LENGTH: u16 = 142;
 pub const SBE_TEMPLATE_ID: u16 = 302;
-pub const SBE_SCHEMA_ID: u16 = 1;
-pub const SBE_SCHEMA_VERSION: u16 = 0;
+pub const SBE_SCHEMA_ID: u16 = 2;
+pub const SBE_SCHEMA_VERSION: u16 = 1;
 pub const SBE_SEMANTIC_VERSION: &str = "5.2";
 
 pub mod encoder {
@@ -369,6 +369,20 @@ pub mod encoder {
         pub fn used_sor(&mut self, value: BoolEnum) {
             let offset = self.offset + 133;
             self.get_buf_mut().put_u8_at(offset, value as u8)
+        }
+
+        /// primitive field 'origQuoteOrderQty'
+        /// - min value: -9223372036854775807
+        /// - max value: 9223372036854775807
+        /// - null value: -9223372036854775808
+        /// - characterEncoding: null
+        /// - semanticType: null
+        /// - encodedOffset: 134
+        /// - encodedLength: 8
+        #[inline]
+        pub fn orig_quote_order_qty(&mut self, value: i64) {
+            let offset = self.offset + 134;
+            self.get_buf_mut().put_i64_at(offset, value);
         }
 
         /// GROUP ENCODER (id=100)
@@ -1046,6 +1060,16 @@ pub mod decoder {
             self.get_buf().get_u8_at(self.offset + 133).into()
         }
 
+        /// primitive field - 'REQUIRED'
+        #[inline]
+        pub fn orig_quote_order_qty(&self) -> i64 {
+            if self.acting_version > 0 && self.acting_version < 1 {
+                return -9223372036854775808_i64;
+            }
+
+            self.get_buf().get_i64_at(self.offset + 134)
+        }
+
         /// GROUP DECODER (id=100)
         #[inline]
         pub fn fills_decoder(self) -> FillsDecoder<Self> {
@@ -1143,7 +1167,7 @@ pub mod decoder {
             self
         }
 
-        /// group token - Token{signal=BEGIN_GROUP, name='fills', referencedName='null', description='null', packageName='null', id=100, version=0, deprecated=0, encodedLength=42, offset=134, componentTokenCount=36, encoding=Encoding{presence=REQUIRED, primitiveType=null, byteOrder=LITTLE_ENDIAN, minValue=null, maxValue=null, nullValue=null, constValue=null, characterEncoding='null', epoch='null', timeUnit=null, semanticType='null'}}
+        /// group token - Token{signal=BEGIN_GROUP, name='fills', referencedName='null', description='null', packageName='null', id=100, version=0, deprecated=0, encodedLength=42, offset=142, componentTokenCount=36, encoding=Encoding{presence=REQUIRED, primitiveType=null, byteOrder=LITTLE_ENDIAN, minValue=null, maxValue=null, nullValue=null, constValue=null, characterEncoding='null', epoch='null', timeUnit=null, semanticType='null'}}
         #[inline]
         pub fn parent(&mut self) -> SbeResult<P> {
             self.parent.take().ok_or(SbeErr::ParentNotSet)

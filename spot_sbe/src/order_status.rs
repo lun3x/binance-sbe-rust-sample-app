@@ -9,6 +9,7 @@ pub enum OrderStatus {
     Rejected = 0x5_u8,
     Expired = 0x6_u8,
     ExpiredInMatch = 0x9_u8,
+    PendingNew = 0xb_u8,
     Unknown = 0xfe_u8,
     #[default]
     NullVal = 0xff_u8,
@@ -25,6 +26,7 @@ impl From<u8> for OrderStatus {
             0x5_u8 => Self::Rejected,
             0x6_u8 => Self::Expired,
             0x9_u8 => Self::ExpiredInMatch,
+            0xb_u8 => Self::PendingNew,
             0xfe_u8 => Self::Unknown,
             _ => Self::NullVal,
         }

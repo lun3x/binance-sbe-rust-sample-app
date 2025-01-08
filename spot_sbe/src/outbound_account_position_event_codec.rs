@@ -1,10 +1,10 @@
 use crate::*;
 
-pub use decoder::AccountOrderRateLimitResponseDecoder;
-pub use encoder::AccountOrderRateLimitResponseEncoder;
+pub use decoder::OutboundAccountPositionEventDecoder;
+pub use encoder::OutboundAccountPositionEventEncoder;
 
-pub const SBE_BLOCK_LENGTH: u16 = 0;
-pub const SBE_TEMPLATE_ID: u16 = 402;
+pub const SBE_BLOCK_LENGTH: u16 = 16;
+pub const SBE_TEMPLATE_ID: u16 = 607;
 pub const SBE_SCHEMA_ID: u16 = 2;
 pub const SBE_SCHEMA_VERSION: u16 = 1;
 pub const SBE_SEMANTIC_VERSION: &str = "5.2";
@@ -13,21 +13,21 @@ pub mod encoder {
     use super::*;
 
     #[derive(Debug, Default)]
-    pub struct AccountOrderRateLimitResponseEncoder<'a> {
+    pub struct OutboundAccountPositionEventEncoder<'a> {
         buf: WriteBuf<'a>,
         initial_offset: usize,
         offset: usize,
         limit: usize,
     }
 
-    impl<'a> Writer<'a> for AccountOrderRateLimitResponseEncoder<'a> {
+    impl<'a> Writer<'a> for OutboundAccountPositionEventEncoder<'a> {
         #[inline]
         fn get_buf_mut(&mut self) -> &mut WriteBuf<'a> {
             &mut self.buf
         }
     }
 
-    impl<'a> Encoder<'a> for AccountOrderRateLimitResponseEncoder<'a> {
+    impl<'a> Encoder<'a> for OutboundAccountPositionEventEncoder<'a> {
         #[inline]
         fn get_limit(&self) -> usize {
             self.limit
@@ -39,7 +39,7 @@ pub mod encoder {
         }
     }
 
-    impl<'a> AccountOrderRateLimitResponseEncoder<'a> {
+    impl<'a> OutboundAccountPositionEventEncoder<'a> {
         pub fn wrap(mut self, buf: WriteBuf<'a>, offset: usize) -> Self {
             let limit = offset + SBE_BLOCK_LENGTH as usize;
             self.buf = buf;
@@ -63,19 +63,47 @@ pub mod encoder {
             header
         }
 
+        /// primitive field 'eventTime'
+        /// - min value: -9223372036854775807
+        /// - max value: 9223372036854775807
+        /// - null value: -9223372036854775808
+        /// - characterEncoding: null
+        /// - semanticType: null
+        /// - encodedOffset: 0
+        /// - encodedLength: 8
+        #[inline]
+        pub fn event_time(&mut self, value: i64) {
+            let offset = self.offset;
+            self.get_buf_mut().put_i64_at(offset, value);
+        }
+
+        /// primitive field 'updateTime'
+        /// - min value: -9223372036854775807
+        /// - max value: 9223372036854775807
+        /// - null value: -9223372036854775808
+        /// - characterEncoding: null
+        /// - semanticType: null
+        /// - encodedOffset: 8
+        /// - encodedLength: 8
+        #[inline]
+        pub fn update_time(&mut self, value: i64) {
+            let offset = self.offset + 8;
+            self.get_buf_mut().put_i64_at(offset, value);
+        }
+
         /// GROUP ENCODER (id=100)
         #[inline]
-        pub fn rate_limits_encoder(
+        pub fn balances_encoder(
             self,
             count: u32,
-            rate_limits_encoder: RateLimitsEncoder<Self>,
-        ) -> RateLimitsEncoder<Self> {
-            rate_limits_encoder.wrap(self, count)
+            balances_encoder: BalancesEncoder<Self>,
+        ) -> BalancesEncoder<Self> {
+            balances_encoder.wrap(self, count)
         }
     }
 
     #[derive(Debug, Default)]
-    pub struct RateLimitsEncoder<P> {
+    pub struct BalancesEncoder<P> {
         parent: Option<P>,
         count: u32,
         index: usize,
@@ -83,7 +111,7 @@ pub mod encoder {
         initial_limit: usize,
     }
 
-    impl<'a, P> Writer<'a> for RateLimitsEncoder<P>
+    impl<'a, P> Writer<'a> for BalancesEncoder<P>
     where
         P: Writer<'a> + Default,
     {
@@ -97,7 +125,7 @@ pub mod encoder {
         }
     }
 
-    impl<'a, P> Encoder<'a> for RateLimitsEncoder<P>
+    impl<'a, P> Encoder<'a> for BalancesEncoder<P>
     where
         P: Encoder<'a> + Default,
     {
@@ -115,7 +143,7 @@ pub mod encoder {
         }
     }
 
-    impl<'a, P> RateLimitsEncoder<P>
+    impl<'a, P> BalancesEncoder<P>
     where
         P: Encoder<'a> + Default,
     {
@@ -137,7 +165,7 @@ pub mod encoder {
 
         #[inline]
         pub fn block_length() -> u16 {
-            19
+            17
         }
 
         #[inline]
@@ -162,60 +190,56 @@ pub mod encoder {
             }
         }
 
-        /// REQUIRED enum
-        #[inline]
-        pub fn rate_limit_type(&mut self, value: RateLimitType) {
-            let offset = self.offset;
-            self.get_buf_mut().put_u8_at(offset, value as u8)
-        }
-
-        /// REQUIRED enum
-        #[inline]
-        pub fn interval(&mut self, value: RateLimitInterval) {
-            let offset = self.offset + 1;
-            self.get_buf_mut().put_u8_at(offset, value as u8)
-        }
-
-        /// primitive field 'intervalNum'
-        /// - min value: 0
-        /// - max value: 254
-        /// - null value: 255
+        /// primitive field 'exponent'
+        /// - min value: -127
+        /// - max value: 127
+        /// - null value: -128
         /// - characterEncoding: null
         /// - semanticType: null
-        /// - encodedOffset: 2
+        /// - encodedOffset: 0
         /// - encodedLength: 1
         #[inline]
-        pub fn interval_num(&mut self, value: u8) {
-            let offset = self.offset + 2;
-            self.get_buf_mut().put_u8_at(offset, value);
+        pub fn exponent(&mut self, value: i8) {
+            let offset = self.offset;
+            self.get_buf_mut().put_i8_at(offset, value);
         }
 
-        /// primitive field 'rateLimit'
+        /// primitive field 'free'
         /// - min value: -9223372036854775807
         /// - max value: 9223372036854775807
         /// - null value: -9223372036854775808
         /// - characterEncoding: null
         /// - semanticType: null
-        /// - encodedOffset: 3
+        /// - encodedOffset: 1
         /// - encodedLength: 8
         #[inline]
-        pub fn rate_limit(&mut self, value: i64) {
-            let offset = self.offset + 3;
+        pub fn free(&mut self, value: i64) {
+            let offset = self.offset + 1;
             self.get_buf_mut().put_i64_at(offset, value);
         }
 
-        /// primitive field 'numOrders'
+        /// primitive field 'locked'
         /// - min value: -9223372036854775807
         /// - max value: 9223372036854775807
         /// - null value: -9223372036854775808
         /// - characterEncoding: null
         /// - semanticType: null
-        /// - encodedOffset: 11
+        /// - encodedOffset: 9
         /// - encodedLength: 8
         #[inline]
-        pub fn num_orders(&mut self, value: i64) {
-            let offset = self.offset + 11;
+        pub fn locked(&mut self, value: i64) {
+            let offset = self.offset + 9;
             self.get_buf_mut().put_i64_at(offset, value);
+        }
+
+        /// VAR_DATA ENCODER - character encoding: 'UTF-8'
+        #[inline]
+        pub fn asset(&mut self, value: &str) {
+            let limit = self.get_limit();
+            let data_length = value.len();
+            self.set_limit(limit + 1 + data_length);
+            self.get_buf_mut().put_u8_at(limit, data_length as u8);
+            self.get_buf_mut().put_slice_at(limit + 1, value.as_bytes());
         }
     }
 } // end encoder
@@ -224,7 +248,7 @@ pub mod decoder {
     use super::*;
 
     #[derive(Clone, Copy, Debug, Default)]
-    pub struct AccountOrderRateLimitResponseDecoder<'a> {
+    pub struct OutboundAccountPositionEventDecoder<'a> {
         buf: ReadBuf<'a>,
         initial_offset: usize,
         offset: usize,
@@ -233,14 +257,14 @@ pub mod decoder {
         pub acting_version: u16,
     }
 
-    impl<'a> Reader<'a> for AccountOrderRateLimitResponseDecoder<'a> {
+    impl<'a> Reader<'a> for OutboundAccountPositionEventDecoder<'a> {
         #[inline]
         fn get_buf(&self) -> &ReadBuf<'a> {
             &self.buf
         }
     }
 
-    impl<'a> Decoder<'a> for AccountOrderRateLimitResponseDecoder<'a> {
+    impl<'a> Decoder<'a> for OutboundAccountPositionEventDecoder<'a> {
         #[inline]
         fn get_limit(&self) -> usize {
             self.limit
@@ -252,7 +276,7 @@ pub mod decoder {
         }
     }
 
-    impl<'a> AccountOrderRateLimitResponseDecoder<'a> {
+    impl<'a> OutboundAccountPositionEventDecoder<'a> {
         pub fn wrap(
             mut self,
             buf: ReadBuf<'a>,
@@ -288,15 +312,27 @@ pub mod decoder {
             )
         }
 
+        /// primitive field - 'REQUIRED'
+        #[inline]
+        pub fn event_time(&self) -> i64 {
+            self.get_buf().get_i64_at(self.offset)
+        }
+
+        /// primitive field - 'REQUIRED'
+        #[inline]
+        pub fn update_time(&self) -> i64 {
+            self.get_buf().get_i64_at(self.offset + 8)
+        }
+
         /// GROUP DECODER (id=100)
         #[inline]
-        pub fn rate_limits_decoder(self) -> RateLimitsDecoder<Self> {
-            RateLimitsDecoder::default().wrap(self)
+        pub fn balances_decoder(self) -> BalancesDecoder<Self> {
+            BalancesDecoder::default().wrap(self)
         }
     }
 
     #[derive(Debug, Default)]
-    pub struct RateLimitsDecoder<P> {
+    pub struct BalancesDecoder<P> {
         parent: Option<P>,
         block_length: usize,
         count: u32,
@@ -304,7 +340,7 @@ pub mod decoder {
         offset: usize,
     }
 
-    impl<'a, P> Reader<'a> for RateLimitsDecoder<P>
+    impl<'a, P> Reader<'a> for BalancesDecoder<P>
     where
         P: Reader<'a> + Default,
     {
@@ -314,7 +350,7 @@ pub mod decoder {
         }
     }
 
-    impl<'a, P> Decoder<'a> for RateLimitsDecoder<P>
+    impl<'a, P> Decoder<'a> for BalancesDecoder<P>
     where
         P: Decoder<'a> + Default,
     {
@@ -332,7 +368,7 @@ pub mod decoder {
         }
     }
 
-    impl<'a, P> RateLimitsDecoder<P>
+    impl<'a, P> BalancesDecoder<P>
     where
         P: Decoder<'a> + Default,
     {
@@ -349,7 +385,7 @@ pub mod decoder {
             self
         }
 
-        /// group token - Token{signal=BEGIN_GROUP, name='rateLimits', referencedName='null', description='null', packageName='null', id=100, version=0, deprecated=0, encodedLength=19, offset=0, componentTokenCount=31, encoding=Encoding{presence=REQUIRED, primitiveType=null, byteOrder=LITTLE_ENDIAN, minValue=null, maxValue=null, nullValue=null, constValue=null, characterEncoding='null', epoch='null', timeUnit=null, semanticType='null'}}
+        /// group token - Token{signal=BEGIN_GROUP, name='balances', referencedName='null', description='null', packageName='null', id=100, version=0, deprecated=0, encodedLength=17, offset=16, componentTokenCount=21, encoding=Encoding{presence=REQUIRED, primitiveType=null, byteOrder=LITTLE_ENDIAN, minValue=null, maxValue=null, nullValue=null, constValue=null, characterEncoding='null', epoch='null', timeUnit=null, semanticType='null'}}
         #[inline]
         pub fn parent(&mut self) -> SbeResult<P> {
             self.parent.take().ok_or(SbeErr::ParentNotSet)
@@ -376,34 +412,40 @@ pub mod decoder {
             }
         }
 
-        /// REQUIRED enum
+        /// primitive field - 'REQUIRED'
         #[inline]
-        pub fn rate_limit_type(&self) -> RateLimitType {
-            self.get_buf().get_u8_at(self.offset).into()
-        }
-
-        /// REQUIRED enum
-        #[inline]
-        pub fn interval(&self) -> RateLimitInterval {
-            self.get_buf().get_u8_at(self.offset + 1).into()
+        pub fn exponent(&self) -> i8 {
+            self.get_buf().get_i8_at(self.offset)
         }
 
         /// primitive field - 'REQUIRED'
         #[inline]
-        pub fn interval_num(&self) -> u8 {
-            self.get_buf().get_u8_at(self.offset + 2)
+        pub fn free(&self) -> i64 {
+            self.get_buf().get_i64_at(self.offset + 1)
         }
 
         /// primitive field - 'REQUIRED'
         #[inline]
-        pub fn rate_limit(&self) -> i64 {
-            self.get_buf().get_i64_at(self.offset + 3)
+        pub fn locked(&self) -> i64 {
+            self.get_buf().get_i64_at(self.offset + 9)
         }
 
-        /// primitive field - 'REQUIRED'
+        /// VAR_DATA DECODER - character encoding: 'UTF-8'
         #[inline]
-        pub fn num_orders(&self) -> i64 {
-            self.get_buf().get_i64_at(self.offset + 11)
+        pub fn asset_decoder(&mut self) -> (usize, usize) {
+            let offset = self.parent.as_ref().expect("parent missing").get_limit();
+            let data_length = self.get_buf().get_u8_at(offset) as usize;
+            self.parent
+                .as_mut()
+                .unwrap()
+                .set_limit(offset + 1 + data_length);
+            (offset + 1, data_length)
+        }
+
+        #[inline]
+        pub fn asset_slice(&'a self, coordinates: (usize, usize)) -> &'a [u8] {
+            debug_assert!(self.get_limit() >= coordinates.0 + coordinates.1);
+            self.get_buf().get_slice_at(coordinates.0, coordinates.1)
         }
     }
 } // end decoder
